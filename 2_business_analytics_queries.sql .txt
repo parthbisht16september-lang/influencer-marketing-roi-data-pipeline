@@ -1,0 +1,93 @@
+-- Q1. What is the total product sales generated across the different social media platforms?
+SELECT platform, SUM(product_sales) AS total_sales
+FROM campaign_data
+GROUP BY platform
+ORDER BY total_sales DESC;
+
+-- Q2. Which specific campaigns were run by a 'Micro-Influencer' but still managed to drive more product_sales than the overall average campaign sales?
+SELECT campaign_id, platform, influencer_category, product_sales
+FROM campaign_data
+WHERE influencer_tier = 'Micro-Influencer'
+  AND product_sales > (SELECT AVG(product_sales) FROM campaign_data)
+ORDER BY product_sales DESC;
+
+
+
+-- Q3. Which are the top 5 influencer_category streams (e.g., Tech, Fashion, Fitness) with the highest average audience engagement?
+select influencer_category, avg(engagements) as avg_engagements
+from campaign_data 
+group by influencer_category
+order by avg_engagements DESC
+limit 5;
+
+
+-- Q4. Compare the average product_sales between different campaign mechanics (e.g., Product Launch vs. Brand Awareness vs. Giveaway).
+select campaign_type, count(*) as total_campaign,
+round( avg(product_sales),2) as avg_sales_of_each_campaign
+from campaign_data
+group by campaign_type
+order by avg_sales_of_each_campaign;
+
+
+-- Q5. Do higher influencer tiers systematically drive more sales? Compare both the average sales and total sales across the 4 custom groups (Micro, Mid-Tier, Macro, Mega).
+select influencer_tier, sum(product_sales) as total_sales
+, avg(product_sales) as average_sales
+from campaign_data 
+group by influencer_category
+order by average_sales desc;
+
+
+
+-- Q6. Which 5 campaigns generated the highest engagement velocity relative to their estimated_production_days?
+ select campaign_id, round(engagements/estimated_production_days,2) as engagement_velocity
+ from campaign_data
+ where estimated_production_days>0
+ order by engagement_velocity DESC
+ limit 5;
+ 
+
+
+
+-- Q7. Segment your campaign logs into 'Low Yield', 'Moderate Yield', and 'High Yield' based on their total sales conversions.
+
+SELECT 
+    CASE 
+        WHEN product_sales < 1000 THEN 'Low Yield'
+        WHEN product_sales BETWEEN 1000 AND 5000 THEN 'Moderate Yield'
+        ELSE 'High Yield'
+    END AS sales_performance_segment,
+    COUNT(*) AS total_campaigns,
+    ROUND(AVG(engagements), 2) AS average_engagement_per_segment
+FROM campaign_data
+GROUP BY 
+    CASE 
+        WHEN product_sales < 1000 THEN 'Low Yield'
+        WHEN product_sales BETWEEN 1000 AND 5000 THEN 'Moderate Yield'
+        ELSE 'High Yield'
+    END
+ORDER BY total_campaigns DESC;
+
+
+
+-- Q8. What are the top performing campaign_type formats within each separate influencer_category domain?
+
+WITH ranked_campaign_types AS (
+    SELECT 
+        influencer_category,
+        campaign_type,
+        SUM(product_sales) AS total_sales_volume,
+       
+        DENSE_RANK() OVER(
+            PARTITION BY influencer_category 
+            ORDER BY SUM(product_sales) DESC
+        ) AS format_rank
+    FROM campaign_data
+    GROUP BY influencer_category, campaign_type
+)
+SELECT 
+    influencer_category,
+    campaign_type,
+    total_sales_volume
+FROM ranked_campaign_types
+WHERE format_rank = 1; 
+
